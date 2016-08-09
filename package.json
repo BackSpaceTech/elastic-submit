@@ -1,0 +1,9 @@
+{
+  "name": "open-submitter",
+  "version": "1.0.0",
+  "description": "A free and open source SEO spinning and backlinking app",
+  "dependencies": {
+    "async": "~2.0.x"
+  },
+  "license": "GPL-3.0"
+}
