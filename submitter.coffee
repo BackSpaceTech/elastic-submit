@@ -13,60 +13,70 @@ jQueryLoc = './js/jquery-2.2.4.min.js'
 
 waitTimeout = 30000 # Seconds
 
-fileAccounts = './accounts/' + system.args[1] + '.csv'
-fileArticles = './articles/' + system.args[2] + '.txt'
-fileBacklinks = './backlinks/' + system.args[3] + '.txt'
-numPosts = system.args[4]
+submitMode = system.args[1]
 
-consolex.log 'cyan', '\n'
-consolex.log 'cyan', '---------------- Submission Details --------------------'
-consolex.log 'cyan', 'Accounts file: ' + fileAccounts
-consolex.log 'cyan', 'Articles file: ' + fileArticles
-consolex.log 'cyan', 'Backlinks saved to file: ' + fileBacklinks
-consolex.log 'cyan', 'Number of Submissions: ' + numPosts
-currentService = 0
-currentStep = 0
-submitArticle =
-  title: ''
-  body: ''
-  keywords: ''
-randomAccount =
-  username: ''
-  password: ''
-  site: ''
-backlinksList = ''
+if submitMode = 'seo'
+  fileAccounts = './accounts/' + system.args[2] + '.csv'
+  fileArticles = './articles/' + system.args[3] + '.txt'
+  fileBacklinks = './backlinks/' + system.args[4] + '.txt'
+  numPosts = system.args[5]
+  consolex.log 'cyan', '\n'
+  consolex.log 'cyan', '---------------- Submission Details --------------------'
+  consolex.log 'cyan', 'Accounts file: ' + fileAccounts
+  consolex.log 'cyan', 'Articles file: ' + fileArticles
+  consolex.log 'cyan', 'Backlinks saved to file: ' + fileBacklinks
+  consolex.log 'cyan', 'Number of Submissions: ' + numPosts
+  currentService = 0
+  currentStep = 0
+  submitArticle =
+    title: ''
+    body: ''
+    keywords: ''
+  randomAccount =
+    username: ''
+    password: ''
+    site: ''
+  backlinksList = ''
 
-# Import settings
-services = importFiles.services('./settings/services.txt')
-indexerDetails = importFiles.indexers('./settings/indexers.txt')
+  # Import settings
+  services = importFiles.services('./settings/services.txt')
+  indexerDetails = importFiles.indexers('./settings/indexers.txt')
 
-# Load services
-service = []
-currentService = 0
-i = 0
-while i < services.length
-  if services[i].status.toLowerCase() == 'ok'
-    service[currentService] = require('./services/' + services[i].name)
-  ++currentService
-  ++i
+  # Load services
+  service = []
+  currentService = 0
+  i = 0
+  while i < services.length
+    if services[i].status.toLowerCase() == 'ok'
+      service[currentService] = require('./services/' + services[i].name)
+    ++currentService
+    ++i
 
-# Load indexers
-numIndexerLoops = 0
-indexers = []
-currentIndexer = 0
-i = 0
-while i < indexerDetails.length
-  if indexerDetails[i].status.toLowerCase() == 'ok'
-    indexers[currentIndexer] = require('./indexers/' + indexerDetails[i].name)
-    indexers[currentIndexer].login = indexerDetails[i]
-    numIndexerLoops += indexers[currentIndexer].steps.length
-    ++currentIndexer
-  ++i
+  # Load indexers
+  numIndexerLoops = 0
+  indexers = []
+  currentIndexer = 0
+  i = 0
+  while i < indexerDetails.length
+    if indexerDetails[i].status.toLowerCase() == 'ok'
+      indexers[currentIndexer] = require('./indexers/' + indexerDetails[i].name)
+      indexers[currentIndexer].login = indexerDetails[i]
+      numIndexerLoops += indexers[currentIndexer].steps.length
+      ++currentIndexer
+    ++i
 
-# ---------------- Import Files  ---------------------------------------------
-consolex.log 'cyan', 'Importing files...'
-accounts = importFiles.accounts(fileAccounts)
-articles = importFiles.articles(fileArticles)
+  # Import Files
+  consolex.log 'cyan', 'Importing files...'
+  accounts = importFiles.accounts(fileAccounts)
+  articles = importFiles.articles(fileArticles)
+
+
+else if submitMode = 'seo-accounts'
+  fileAccounts = './accounts/' + system.args[2] + '.csv'
+  fileProfiles =  './profiles/' + system.args[3] + '.csv'
+  serviceAccount = system.args[4]
+  numPosts = system.args[5]
+
 
 #-------------------------- Submit  ------------------------------------------
 currentLoop = 0
@@ -349,9 +359,7 @@ async.whilst ( ->
   ), (err) ->
   consolex.log 'green', 'Finished all submissions'
   # Indexers Loop
-  async.eachSeries indexers, doService, ((err) ->
-    next()
-  ), (err) ->
+  async.eachSeries indexers, doService, (err) ->
     if err
       console.log 'Indexer submission failed'
     else
