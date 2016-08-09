@@ -1,3 +1,6 @@
 node_modules/*
 accounts/*
 settings/*
+articles/*
+backlinks/*
+capture/*
