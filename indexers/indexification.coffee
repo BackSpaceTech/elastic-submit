@@ -1,3 +1,4 @@
+# coffeelint: disable=max_line_length
 exports.name = 'indexification.com'
 exports.url = 'http://www.indexification.com/'
 exports.steps = [
@@ -22,7 +23,7 @@ exports.steps = [
   }
   {
     command: 'click'
-    xpath: '(//button[@type="button"])[4]'
+    selector: '(//button[@type="button"])[4]'
   }
   {
     command: 'wait'
