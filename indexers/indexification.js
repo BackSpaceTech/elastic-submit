@@ -23,7 +23,7 @@
       submit: false
     }, {
       command: 'click',
-      xpath: '(//button[@type="button"])[4]'
+      selector: '(//button[@type="button"])[4]'
     }, {
       command: 'wait',
       value: 5000
