@@ -1,5 +1,5 @@
 # coffeelint: disable=max_line_length
-scriptDebug = true # When true takes screenshots
+scriptDebug = false # When true takes screenshots
 
 system = require('system')
 fs = require('fs')
@@ -15,13 +15,14 @@ waitTimeout = 30000 # Seconds
 
 submitMode = system.args[1]
 
-if submitMode = 'seo'
+if submitMode == 'seo'
   fileAccounts = './accounts/' + system.args[2] + '.csv'
   fileArticles = './articles/' + system.args[3] + '.txt'
   fileBacklinks = './backlinks/' + system.args[4] + '.txt'
   numPosts = system.args[5]
-  consolex.log 'cyan', '\n'
+  console.log '\n'
   consolex.log 'cyan', '---------------- Submission Details --------------------'
+  consolex.log 'cyan', 'Submit mode: ' + submitMode
   consolex.log 'cyan', 'Accounts file: ' + fileAccounts
   consolex.log 'cyan', 'Articles file: ' + fileArticles
   consolex.log 'cyan', 'Backlinks saved to file: ' + fileBacklinks
@@ -48,7 +49,7 @@ if submitMode = 'seo'
   i = 0
   while i < services.length
     if services[i].status.toLowerCase() == 'ok'
-      service[currentService] = require('./services/' + services[i].name)
+      service[currentService] = require('./scripts-services/' + services[i].name)
     ++currentService
     ++i
 
@@ -71,12 +72,16 @@ if submitMode = 'seo'
   articles = importFiles.articles(fileArticles)
 
 
-else if submitMode = 'seo-accounts'
+else if submitMode == 'seo-accounts'
   fileAccounts = './accounts/' + system.args[2] + '.csv'
   fileProfiles =  './profiles/' + system.args[3] + '.csv'
   serviceAccount = system.args[4]
-  numPosts = system.args[5]
+  numAccounts = system.args[5]
 
+# Bad submit mode
+else
+  consolex.log 'red', 'Submit mode argmument missing or bad'
+  phantom.exit(0)
 
 #-------------------------- Submit  ------------------------------------------
 currentLoop = 0
@@ -126,7 +131,6 @@ doService = (service, doneCallback) ->
   page.open service.url, (status) ->
     if status == 'success'
       consolex.log 'blue','Opened url.'
-      page.render './capture/capture' + currentStep + '.png'
       #------------------------ Steps Loop ----------------------------------
       doStep = (step, doneCallback) ->
         saveScreen = () ->
@@ -347,21 +351,37 @@ doService = (service, doneCallback) ->
       stepError(step)
       doneCallback(null)
 
-#------------------------ Job Loop -------------------------------------------
-async.whilst ( ->
-  currentLoop < numPosts
-  ), ((next) ->
-  # Services Loop
-  async.eachSeries service, doService, (err) ->
-    currentLoop++
-    consolex.log 'green', 'Finished services for loop'
-    next()
-  ), (err) ->
-  consolex.log 'green', 'Finished all submissions'
-  # Indexers Loop
-  async.eachSeries indexers, doService, (err) ->
-    if err
-      console.log 'Indexer submission failed'
-    else
-      consolex.log 'green', 'Finished indexer submissions'
-      phantom.exit(0)
+#------------------------ SEO Job Loop ----------------------------------------
+if submitMode = 'seo'
+  async.whilst ( ->
+    currentLoop < numPosts
+    ), ((next) ->
+    # Services Loop
+    async.eachSeries service, doService, (err) ->
+      currentLoop++
+      consolex.log 'green', 'Finished services for loop'
+      next()
+    ), (err) ->
+    consolex.log 'green', 'Finished all submissions'
+    # Indexers Loop
+    async.eachSeries indexers, doService, (err) ->
+      if err
+        console.log 'Indexer submission failed'
+      else
+        consolex.log 'green', 'Finished indexer submissions'
+        phantom.exit(0)
+
+
+#------------------------ SEO Accounts Loop -----------------------------------
+else if submitMode = 'seo-accounts'
+  async.whilst ( ->
+    currentLoop < numAccounts
+    ), ((next) ->
+    # Services Loop
+    async.eachSeries service, doService, (err) ->
+      currentLoop++
+      consolex.log 'green', 'Finished services for loop'
+      next()
+    ), (err) ->
+    consolex.log 'green', 'Finished all account creation tasks'
+    phantom.exit(0)
