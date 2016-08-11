@@ -127,3 +127,76 @@ exports.getArticle = (articles, microBlog, noHTML) ->
 
   consolex.log 'magenta', 'Created article: ' + newArticle.title
   newArticle # Return the article to submit
+
+exports.getProfile = (profiles, noHTML) ->
+  # Create spun profile
+  a = Math.floor(profiles.length*Math.random())
+  if a >= profiles.length
+    a = profiles.length - 1
+  newProfile =
+    username: ''
+    password: ''
+    sitename: ''
+    email: profiles[a].email
+    profile: ''
+    keywords: []
+    links: []
+
+  # Spin profile username
+  consolex.log 'blue', 'Spinning username for profile # ' + a + '...'
+  newProfile.username = spinner(profiles[a].username)
+
+  # Spin profile password
+  consolex.log 'blue', 'Spinning password for profile # ' + a + '...'
+  newProfile.password = spinner(profiles[a].password)
+
+  # Spin profile sitename
+  consolex.log 'blue', 'Spinning sitename for profile # ' + a + '...'
+  newProfile.sitename = spinner(profiles[a].sitename)
+
+  # Spin profile keywords
+  consolex.log 'blue', 'Spinning keywords for profile # ' + a + '...'
+  newProfile.keywords = spinnerLoop(profiles[a].keywords)
+
+  # Spin profile links
+  consolex.log 'blue', 'Spinning links for profile # ' + a + '...'
+  newProfile.links = spinnerLoop(profiles[a].links)
+
+  # Spin profile
+  consolex.log 'blue', 'Spinning profile # ' + a + '...'
+
+  newProfile.profile = spinner(profiles[a].profile)
+  if noHTML
+    newProfile.profile = newProfile.profile.replace('<br>', '\n')
+
+  # Insert random links
+  consolex.log 'blue', 'Inserting random links in profile # ' + a + '...'
+  if !noHTML
+    # Insert random links with random keywords in profile
+    tempIndex = 0
+    while tempIndex < newProfile.keywords.length # Check for empty string
+      if newProfile.keywords[tempIndex].trim().length == 0
+        newProfile.keywords.splice(tempIndex, 1)
+      ++tempIndex
+    if newProfile.keywords.length == 0 # If no keywords
+      newProfile.keywords[0] = 'here'
+    if (newProfile.profile.indexOf("#links#")) == -1 # No link tags
+      newProfile.profile += ' #links#'
+    while (newProfile.profile.indexOf("#links#")) != -1
+      tempRandom = Math.floor(Math.random()*newProfile.links.length)
+      randomLink = newProfile.links[tempRandom]
+      tempRandom = Math.floor(Math.random()*newProfile.keywords.length)
+      randomKeyword = newProfile.keywords[tempRandom]
+      tempLink = ' <a href="' + randomLink.toString().trim() + '">' +
+        randomKeyword.toString().trim() + '</a> '
+      newProfile.profile = newProfile.profile.replace('#links#', tempLink)
+  else
+    # Remove link tags
+    newProfile.profile = newProfile.profile.replace('#links#', ' ')
+    # Insert random link at end of body
+    temp = Math.floor(Math.random()*newProfile.links.length)
+    randomLink = newProfile.links[temp]
+    newProfile.profile += (' ' + randomLink)
+
+  consolex.log 'magenta', 'Created profile: ' + newProfile.username
+  newProfile  # Return the profile to create

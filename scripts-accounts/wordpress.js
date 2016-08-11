@@ -10,56 +10,102 @@
       command: 'create-profile',
       noHTML: false
     }, {
-      command: 'wait-for',
-      selector: '#user_login'
-    }, {
-      command: 'login',
-      form: '#loginform',
-      username: '#user_login',
-      password: '#user_pass',
-      submit: true
-    }, {
       command: 'wait',
       value: 2000
     }, {
       command: 'wait-for',
-      selector: 'svg.gridicon.gridicons-create'
+      selector: 'span[class="signup__steps"]'
+    }, {
+      command: 'if',
+      selector: 'svg[class="gridicon gridicons-briefcase survey-step__vertical__icon"]'
     }, {
       command: 'click',
-      selector: 'svg.gridicon.gridicons-create'
+      selector: 'svg[class="gridicon gridicons-briefcase survey-step__vertical__icon"]'
     }, {
       command: 'wait',
       value: 1000
     }, {
       command: 'wait-for',
-      selector: '#tinymce-1'
+      selector: 'label:contains(Technology & Computing)'
+    }, {
+      command: 'click',
+      selector: 'label:contains(Technology & Computing)'
     }, {
       command: 'wait',
       value: 1000
-    }, {
-      command: 'title',
-      selector: 'textarea.textarea-autosize.editor-title__input'
-    }, {
-      command: 'click',
-      selector: 'a[title="Edit the raw HTML code"]'
-    }, {
-      command: 'wait',
-      value: 1000
-    }, {
-      command: 'body',
-      selector: '#tinymce-1'
-    }, {
-      command: 'click',
-      selector: 'button.editor-ground-control__publish-button.button.is-primary'
     }, {
       command: 'wait-for',
-      selector: '.is-success'
+      selector: 'h2:contains(A grid of my latest posts)'
     }, {
-      command: 'save-account',
-      selector: 'a.notice__action'
+      command: 'end-if'
+    }, {
+      command: 'if',
+      selector: 'h2:contains(A grid of my latest posts)'
+    }, {
+      command: 'click',
+      selector: 'h2:contains(A grid of my latest posts)'
     }, {
       command: 'wait',
-      value: 5000
+      value: 1000
+    }, {
+      command: 'wait-for',
+      selector: 'a[class="theme__active-focus"]'
+    }, {
+      command: 'end-if'
+    }, {
+      command: 'if',
+      selector: 'a[class="theme__active-focus"]'
+    }, {
+      command: 'click',
+      selector: 'a[class="theme__active-focus"]'
+    }, {
+      command: 'wait',
+      value: 1000
+    }, {
+      command: 'wait-for',
+      selector: 'input[type="search"]'
+    }, {
+      command: 'end-if'
+    }, {
+      command: 'if',
+      selector: 'input[type="search"]'
+    }, {
+      command: 'sitename',
+      selector: 'input[type="search"]'
+    }, {
+      command: 'wait',
+      value: 1000
+    }, {
+      command: 'wait-for',
+      selector: 'button:contains(Select)'
+    }, {
+      command: 'click',
+      selector: 'button:contains(Select)'
+    }, {
+      command: 'wait',
+      value: 1000
+    }, {
+      command: 'wait-for',
+      selector: 'button:contains(Select Free)'
+    }, {
+      command: 'end-if'
+    }, {
+      command: 'if',
+      selector: 'button:contains(Select Free)'
+    }, {
+      command: 'click',
+      selector: 'button:contains(Select Free)'
+    }, {
+      command: 'wait',
+      value: 1000
+    }, {
+      command: 'wait-for',
+      selector: 'input[name="email"]'
+    }, {
+      command: 'end-if'
+    }, {
+      command: 'if',
+      selector: 'button:contains(Select Free)'
     }
   ];
 

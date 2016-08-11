@@ -177,4 +177,65 @@
     }
   };
 
+  exports.profiles = function(filePath) {
+    var a, buffer, ins, profileStatus, temp, tempProfiles;
+    tempProfiles = [];
+    profileStatus = '';
+    if (fs.exists(filePath) && fs.isFile(filePath)) {
+      consolex.log('blue', 'Loading profiles...');
+      ins = fs.open(filePath, 'r');
+      a = -1;
+      while (!ins.atEnd()) {
+        buffer = ins.readLine();
+        temp = buffer.trim();
+        if (temp === '#Username') {
+          profileStatus = 'username';
+          ++a;
+          tempProfiles[a] = {
+            username: '',
+            password: '',
+            sitename: '',
+            email: '',
+            profile: '',
+            links: '',
+            keywords: ''
+          };
+        } else if (temp === '#Password') {
+          profileStatus = 'password';
+        } else if (temp === '#Email') {
+          profileStatus = 'email';
+        } else if (temp === '#Sitename') {
+          profileStatus = 'sitename';
+        } else if (temp === '#Profile') {
+          profileStatus = 'profile';
+        } else if (temp === '#Keywords') {
+          profileStatus = 'keywords';
+        } else if (temp === '#Links') {
+          profileStatus = 'links';
+        } else if (profileStatus === 'username') {
+          tempProfiles[a].username += temp;
+        } else if (profileStatus === 'password') {
+          tempProfiles[a].password += temp;
+        } else if (profileStatus === 'email') {
+          tempProfiles[a].email += temp;
+        } else if (profileStatus === 'sitename') {
+          tempProfiles[a].sitename += temp;
+        } else if (profileStatus === 'profile') {
+          tempProfiles[a].profile += temp + '<br>';
+        } else if (profileStatus === 'keywords') {
+          temp = buffer.split(/\s*,\s*/);
+          tempProfiles[a].keywords = temp;
+        } else if (profileStatus === 'links') {
+          temp = buffer.split(/\s*,\s*/);
+          tempProfiles[a].links = temp;
+        }
+      }
+      ins.close();
+      a = 0;
+      return tempProfiles;
+    } else {
+      return console.log('Could not load ' + filePath);
+    }
+  };
+
 }).call(this);
