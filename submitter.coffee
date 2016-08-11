@@ -1,5 +1,5 @@
 # coffeelint: disable=max_line_length
-scriptDebug = false # When true takes screenshots
+scriptDebug = true # When true takes screenshots
 
 system = require('system')
 fs = require('fs')
@@ -11,6 +11,7 @@ importFiles = require('./app/import-files')
 spinner = require('./app/spinner')
 jQueryLoc = './js/jquery-2.2.4.min.js'
 
+phantom.clearCookies()
 waitTimeout = 30000 # Seconds
 
 submitMode = system.args[1]
@@ -38,6 +39,14 @@ if submitMode == 'seo'
     password: ''
     site: ''
   backlinksList = ''
+  submitProfile =
+    username: ''
+    password: ''
+    sitename: ''
+    email: ''
+    profile: ''
+    keywords: ''
+    links: ''
 
   # Import settings
   services = importFiles.services('./settings/services.txt')
@@ -71,12 +80,30 @@ if submitMode == 'seo'
   accounts = importFiles.accounts(fileAccounts)
   articles = importFiles.articles(fileArticles)
 
-
 else if submitMode == 'seo-accounts'
   fileAccounts = './accounts/' + system.args[2] + '.csv'
-  fileProfiles =  './profiles/' + system.args[3] + '.csv'
-  serviceAccount = system.args[4]
-  numAccounts = system.args[5]
+  fileProfiles =  './profiles/' + system.args[3] + '.txt'
+  numAccounts = system.args[4]
+  console.log '\n'
+  consolex.log 'cyan', '---------------- Submission Details --------------------'
+  consolex.log 'cyan', 'Submit mode: ' + submitMode
+  consolex.log 'cyan', 'Accounts file: ' + fileAccounts
+  consolex.log 'cyan', 'Profiles file: ' + fileProfiles
+  consolex.log 'cyan', 'Number of Accounts: ' + numAccounts
+  # Import settings
+  services = importFiles.services('./settings/services-accounts.txt')
+  # Load services-accounts
+  service = []
+  currentService = 0
+  i = 0
+  while i < services.length
+    if services[i].status.toLowerCase() == 'ok'
+      service[currentService] = require('./scripts-accounts/' + services[i].name)
+    ++currentService
+    ++i
+  # Import Files
+  consolex.log 'cyan', 'Importing files...'
+  profiles = importFiles.profiles(fileProfiles)
 
 # Bad submit mode
 else
@@ -92,11 +119,13 @@ serviceName = ''
 #---------------------- Service Loop ------------------------------------------
 doService = (service, doneCallback) ->
   serviceName = service.name
+  ifSkip = false
   # Steps Loop
   consolex.log 'yellow', '\n-------------- Submit to ' + serviceName +
     ' ----------------'
   consolex.log 'blue','Opening url '+service.url+'...'
   page = webPage.create()
+  page.clearCookies()
   page.viewportSize =
     width: 800
     height: 600
@@ -116,7 +145,6 @@ doService = (service, doneCallback) ->
     return
   getSelector = (step) ->
     tempSelect = switch
-      when step.selector then step.selector
       when step.xpath then xpath2css.x2c(step.xpath)
       when step.text then ':contains("' + step.text + '")'
       else null
@@ -128,8 +156,10 @@ doService = (service, doneCallback) ->
     page.render './capture/error.png'
   page.settings.userAgent = 'Mozilla/5.0 (Windows NT 10.0; WOW64) ' +
     'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36'
+  page.clearMemoryCache()
   page.open service.url, (status) ->
     if status == 'success'
+      page.clearCookies()
       consolex.log 'blue','Opened url.'
       #------------------------ Steps Loop ----------------------------------
       doStep = (step, doneCallback) ->
@@ -137,15 +167,21 @@ doService = (service, doneCallback) ->
           if scriptDebug
             page.render './capture/capture' + currentStep + '.png'
         #------------------------ Input text ----------------------------------
-        typeField = (selector, inputText) ->
+        typeField = (selector, inputText, overwrite) ->
+          temp = {
+            selector: selector
+            overwrite: overwrite
+          }
           if page.injectJs jQueryLoc
             x = page.evaluate ((s) ->
-              if ($(s).length)
-                $(s)[0].focus()
+              if ($(s.selector).length)
+                if s.overwrite
+                  $(s.selector).val('')
+                $(s.selector)[0].focus()
                 return true
               else
                 return false
-            ), selector
+            ), temp
             if x
               page.sendEvent('keypress', inputText)
             else
@@ -169,19 +205,52 @@ doService = (service, doneCallback) ->
           else
             consolex.log 'red', 'Could not inject jQuery'
             stepError step
+            doneCallback(null)
 
         ++currentStep
         if goodService
-          consolex.log 'blue', 'Step ' + currentStep + ' - ' + step.command
-          #---------------------- Create ------------------------------------
-          if step.command == 'create-article'
+          if !ifSkip
+            consolex.log 'blue', 'Step ' + currentStep + ' - ' + step.command
+          #---------------------- Create Article -----------------------------
+          if step.command == 'create-article' and !ifSkip
             consolex.log 'cyan', 'Creating article...'
             submitArticle = spinner.getArticle(articles, step.micro,
               step.noHTML)
             randomAccount = spinner.getAccount(accounts, serviceName)
             doneCallback(null)
+          #---------------------- if -----------------------------------------
+          else if step.command == 'if' and !ifSkip
+            if page.injectJs jQueryLoc
+              x = page.evaluate(((s) ->
+                y = $(s)
+                if y
+                  y.length
+                else
+                  0
+              ), step.selector)
+              if x > 0
+                consolex.log 'cyan', 'Found selector'
+                ifSkip = false
+                saveScreen()
+                doneCallback(null)
+              else
+                consolex.log 'blue', 'Selector not found'
+                ifSkip = true
+                saveScreen()
+                doneCallback(null)
+          #---------------------- if -----------------------------------------
+          else if step.command == 'end-if'
+            ifSkip = false
+            saveScreen()
+            doneCallback(null)
+          #---------------------- Create Profile -----------------------------
+          else if step.command == 'create-profile' and !ifSkip
+            consolex.log 'cyan', 'Creating profile...'
+            submitProfile = spinner.getProfile(profiles, step.noHTML)
+            console.log 'submitProfile: '+ JSON .stringify submitProfile
+            doneCallback(null)
           #---------------------- Wait-for ----------------------------------
-          else if step.command == 'wait-for'
+          else if step.command == 'wait-for' and !ifSkip
             saveScreen()
             consolex.log 'blue', 'Waiting for ' + step.selector + '...'
             count = 0
@@ -221,7 +290,7 @@ doService = (service, doneCallback) ->
               stepError step
               doneCallback(null)
           #---------------------- Wait ---------------------------------------
-          else if step.command == 'wait'
+          else if step.command == 'wait' and !ifSkip
             tempTime = step.value
             consolex.log 'blue', 'Waiting for ' + tempTime + ' ms...'
             count = 0
@@ -239,7 +308,7 @@ doService = (service, doneCallback) ->
               saveScreen()
               doneCallback(null)
           # -------------------------- Login --------------------------------
-          else if step.command == 'login' or step.command == 'login-indexer'
+          else if (step.command == 'login' or step.command == 'login-indexer') and !ifSkip
             saveScreen()
             if step.command == 'login'
               if randomAccount.username == 'no accounts'
@@ -259,8 +328,14 @@ doService = (service, doneCallback) ->
               submitForm(step.form)
             saveScreen()
             doneCallback(null)
+          # -------------------------- Sitename --------------------------------
+          else if step.command == 'sitename'
+            console.log step.selector
+            typeField(step.selector, submitProfile.sitename, true)
+            saveScreen()
+            doneCallback(null)
           # -------------------------- Login --------------------------------
-          else if step.command == 'click'
+          else if step.command == 'click' and !ifSkip
             saveScreen()
             if page.injectJs jQueryLoc
               x = page.evaluate ((s) ->
@@ -285,7 +360,7 @@ doService = (service, doneCallback) ->
             saveScreen()
             doneCallback(null)
           # -------------------------- Title / Body ---------------------------
-          else if step.command == 'title' or step.command == 'body'
+          else if (step.command == 'title' or step.command == 'body') and !ifSkip
             saveScreen()
             if step.command == 'title'
               temp = submitArticle.title
@@ -295,7 +370,7 @@ doService = (service, doneCallback) ->
             saveScreen()
             doneCallback(null)
           # -------------------------- Save-href --------------------------------
-          else if step.command == 'save-href'
+          else if step.command == 'save-href' and !ifSkip
             saveScreen()
             if page.injectJs jQueryLoc
               x = page.evaluate ((s) ->
@@ -324,15 +399,17 @@ doService = (service, doneCallback) ->
             saveScreen()
             doneCallback(null)
           # -------------------------- Save-href --------------------------------
-          else if step.command == 'backlinks'
+          else if step.command == 'backlinks' and !ifSkip
             saveScreen()
             typeField(step.selector, backlinksList)
             saveScreen()
             doneCallback(null)
           #---------------------- Step Error ----------------------------------
-          else
+          else if !ifSkip
             consolex.log 'red', 'Unrecognized command: ' + step.command
             stepError step
+            doneCallback(null)
+          else
             doneCallback(null)
         else
           doneCallback(null)
@@ -352,7 +429,7 @@ doService = (service, doneCallback) ->
       doneCallback(null)
 
 #------------------------ SEO Job Loop ----------------------------------------
-if submitMode = 'seo'
+if submitMode == 'seo'
   async.whilst ( ->
     currentLoop < numPosts
     ), ((next) ->
@@ -366,14 +443,14 @@ if submitMode = 'seo'
     # Indexers Loop
     async.eachSeries indexers, doService, (err) ->
       if err
-        console.log 'Indexer submission failed'
+        consolex.log 'red', 'Indexer submission failed'
       else
         consolex.log 'green', 'Finished indexer submissions'
         phantom.exit(0)
 
 
 #------------------------ SEO Accounts Loop -----------------------------------
-else if submitMode = 'seo-accounts'
+else if submitMode == 'seo-accounts'
   async.whilst ( ->
     currentLoop < numAccounts
     ), ((next) ->
