@@ -115,6 +115,7 @@ currentLoop = 0
 currentStep = 0
 goodService = true
 serviceName = ''
+pageStatus = 'success'
 
 #---------------------- Service Loop ------------------------------------------
 doService = (service, doneCallback) ->
@@ -134,8 +135,11 @@ doService = (service, doneCallback) ->
       console.log msg
       return
   page.onError = (msg, trace) ->
-    if msg.slice(0,9) != 'TypeError' # Ignore
-      console.log msg
+    if (msg.slice(0,9) != 'TypeError') and (msg.slice(0,17) != 'Unhandled promise') # Ignore
+      if msg.slice(22,38) == 'find variable: $'
+        consolex.log 'red', "Error loading jQuery. Insert extra wait time."
+      else
+        consolex.log 'red', msg
     if trace
       trace.forEach (t) ->
         stackmsg = ' at' + (if t.function then ' function ' +
@@ -159,8 +163,10 @@ doService = (service, doneCallback) ->
   page.clearMemoryCache()
   page.open service.url, (status) ->
     if status == 'success'
-      page.clearCookies()
       consolex.log 'blue','Opened url.'
+      page.onLoadFinished = (status) ->
+        pageStatus = status
+        return
       #------------------------ Steps Loop ----------------------------------
       doStep = (step, doneCallback) ->
         saveScreen = () ->
@@ -176,7 +182,7 @@ doService = (service, doneCallback) ->
             x = page.evaluate ((s) ->
               if ($(s.selector).length)
                 if s.overwrite
-                  $(s.selector).val('')
+                  $(s.selector)[0].value = ''
                 $(s.selector)[0].focus()
                 return true
               else
@@ -185,11 +191,27 @@ doService = (service, doneCallback) ->
             if x
               page.sendEvent('keypress', inputText)
             else
-              consolex.log 'red', 'Could not find selector'
+              consolex.log 'red', 'Could not find selector ' + selector
               stepError step
           else
             consolex.log 'red', 'Could not inject jQuery'
             stepError step
+        resetForm = (selector) ->
+          if page.injectJs jQueryLoc
+            x = page.evaluate ((s) ->
+              if $(s).length
+                $(s)[0].reset()
+                return true
+              else
+                return false
+            ), selector
+            if !x
+              consolex.log 'red', 'Could not find selector ' + selector
+              stepError step
+          else
+            consolex.log 'red', 'Could not inject jQuery'
+            stepError step
+            doneCallback(null)
         submitForm = (selector) ->
           if page.injectJs jQueryLoc
             x = page.evaluate ((s) ->
@@ -200,7 +222,7 @@ doService = (service, doneCallback) ->
                 return false
             ), selector
             if !x
-              consolex.log 'red', 'Could not find selector'
+              consolex.log 'red', 'Could not find selector ' + selector
               stepError step
           else
             consolex.log 'red', 'Could not inject jQuery'
@@ -234,7 +256,7 @@ doService = (service, doneCallback) ->
                 saveScreen()
                 doneCallback(null)
               else
-                consolex.log 'blue', 'Selector not found'
+                consolex.log 'blue', 'Selector '+ step.selector + ' not found'
                 ifSkip = true
                 saveScreen()
                 doneCallback(null)
@@ -247,48 +269,47 @@ doService = (service, doneCallback) ->
           else if step.command == 'create-profile' and !ifSkip
             consolex.log 'cyan', 'Creating profile...'
             submitProfile = spinner.getProfile(profiles, step.noHTML)
-            console.log 'submitProfile: '+ JSON .stringify submitProfile
             doneCallback(null)
           #---------------------- Wait-for ----------------------------------
           else if step.command == 'wait-for' and !ifSkip
             saveScreen()
             consolex.log 'blue', 'Waiting for ' + step.selector + '...'
+            jQueryStatus = 0
             count = 0
             x = 0
             tempDelay = 250
             jQueryLoadTime = 1000
-            if page.injectJs jQueryLoc
-              async.whilst (->
-                count < waitTimeout
-              ), ((callback) ->
-                count += tempDelay
-                if count > jQueryLoadTime
-                  x = page.evaluate(((s) ->
-                    y = $(s)
-                    if y
-                      y.length
-                    else
-                      0
-                  ), step.selector)
-                  if x > 0
-                    count = waitTimeout
-                setTimeout (->
-                  callback null, count
-                  return
-                ), tempDelay
+            async.whilst (->
+              count < waitTimeout
+            ), ((callback) ->
+              count += tempDelay
+              if pageStatus == 'success' and (jQueryStatus == 0)
+                jQueryStatus = 1
+                if page.injectJs jQueryLoc
+                  jQueryStatus = 2
+              if count > jQueryLoadTime and (jQueryStatus == 2)
+                x = page.evaluate(((s) ->
+                  y = $(s)
+                  if y
+                    y.length
+                  else
+                    0
+                ), step.selector)
+                if x > 0
+                  count = waitTimeout
+              setTimeout (->
+                callback null, count
                 return
-              ), (err, n) ->
-                if x and (x.length != 0)
-                  saveScreen()
-                  doneCallback(null)
-                else
-                  consolex.log 'red', 'Could not find selector'
-                  stepError step
-                  doneCallback(null)
-            else
-              consolex.log 'red', 'Could not inject jQuery'
-              stepError step
-              doneCallback(null)
+              ), tempDelay
+              return
+            ), (err, n) ->
+              if x and (x.length != 0)
+                saveScreen()
+                doneCallback(null)
+              else
+                consolex.log 'red', 'Could not find selector ' + step.selector
+                stepError step
+                doneCallback(null)
           #---------------------- Wait ---------------------------------------
           else if step.command == 'wait' and !ifSkip
             tempTime = step.value
@@ -328,10 +349,32 @@ doService = (service, doneCallback) ->
               submitForm(step.form)
             saveScreen()
             doneCallback(null)
-          # -------------------------- Sitename --------------------------------
-          else if step.command == 'sitename'
-            console.log step.selector
-            typeField(step.selector, submitProfile.sitename, true)
+          # -------------------------- Service Email --------------------------
+          else if step.command == 'service-username' and !ifSkip
+            x = randomAccount.username
+            typeField(step.selector, x, true)
+            saveScreen()
+            doneCallback(null)
+          # -------------------------- Service Password -----------------------
+          else if step.command == 'service-password' and !ifSkip
+            x = randomAccount.password
+            typeField(step.selector, x, true)
+            saveScreen()
+            doneCallback(null)
+          # -------------------------- Email --------------------------------
+          else if step.command == 'profile-email' and !ifSkip
+            x = submitProfile.username + '@' + submitProfile.email
+            typeField(step.selector, x, true)
+            saveScreen()
+            doneCallback(null)
+          # -------------------------- Username -------------------------------
+          else if step.command == 'profile-username' and !ifSkip
+            typeField(step.selector, submitProfile.username, true)
+            saveScreen()
+            doneCallback(null)
+          # -------------------------- Password --------------------------------
+          else if step.command == 'profile-password' and !ifSkip
+            typeField(step.selector, submitProfile.password, true)
             saveScreen()
             doneCallback(null)
           # -------------------------- Login --------------------------------
@@ -352,7 +395,7 @@ doService = (service, doneCallback) ->
                   return false
               ), step.selector
               if !x
-                consolex.log 'red', 'Could not find selector'
+                consolex.log 'red', 'Could not find selector ' + step.selector
                 stepError step
             else
               consolex.log 'red', 'Could not inject jQuery'
@@ -391,14 +434,34 @@ doService = (service, doneCallback) ->
                   stepError step
                 consolex.log 'blue', 'Saved backlink to ' + fileBacklinks
               else
-                consolex.log 'red', 'Could not find selector'
+                consolex.log 'red', 'Could not find selector ' + step.selector
                 stepError step
             else
               consolex.log 'red', 'Could not inject jQuery'
               stepError step
             saveScreen()
             doneCallback(null)
-          # -------------------------- Save-href --------------------------------
+          # -------------------------- Save-accounts ---------------------------
+          else if step.command == 'save-account' and !ifSkip
+            # Save accounts.csv
+            x = serviceName + ','
+            x += submitProfile.username + ','
+            x += submitProfile.password + ','
+            if step.sitename
+              x += submitProfile.sitename
+            else
+              x += submitProfile.username
+            try
+              fs.write fileAccounts, x, 'a'
+              fs.write fileAccounts, '\n', 'a'
+            catch e
+              consolex.log 'red', 'File error'
+              consolex.log 'red', e
+              stepError step
+            consolex.log 'blue', 'Saved account to ' + fileAccounts
+            saveScreen()
+            doneCallback(null)
+          # -------------------------- Save-href -------------------------------
           else if step.command == 'backlinks' and !ifSkip
             saveScreen()
             typeField(step.selector, backlinksList)
