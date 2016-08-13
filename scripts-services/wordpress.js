@@ -21,7 +21,7 @@
       submit: true
     }, {
       command: 'wait',
-      value: 2000
+      value: 5000
     }, {
       command: 'wait-for',
       selector: 'svg.gridicon.gridicons-create'
@@ -29,23 +29,14 @@
       command: 'click',
       selector: 'svg.gridicon.gridicons-create'
     }, {
-      command: 'wait',
-      value: 1000
-    }, {
       command: 'wait-for',
       selector: '#tinymce-1'
-    }, {
-      command: 'wait',
-      value: 1000
     }, {
       command: 'title',
       selector: 'textarea.textarea-autosize.editor-title__input'
     }, {
       command: 'click',
       selector: 'a[title="Edit the raw HTML code"]'
-    }, {
-      command: 'wait',
-      value: 1000
     }, {
       command: 'body',
       selector: '#tinymce-1'

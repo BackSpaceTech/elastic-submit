@@ -70,7 +70,7 @@
       command: 'if',
       selector: 'input[type="search"]'
     }, {
-      command: 'sitename',
+      command: 'profile-username',
       selector: 'input[type="search"]'
     }, {
       command: 'wait',
@@ -105,7 +105,34 @@
       command: 'end-if'
     }, {
       command: 'if',
-      selector: 'button:contains(Select Free)'
+      selector: 'input[name="email"]'
+    }, {
+      command: 'profile-email',
+      selector: 'input[name="email"]'
+    }, {
+      command: 'wait',
+      value: 1000
+    }, {
+      command: 'profile-password',
+      selector: 'input[name="password"]'
+    }, {
+      command: 'wait',
+      value: 1000
+    }, {
+      command: 'click',
+      selector: 'button[type="submit"]'
+    }, {
+      command: 'wait',
+      value: 1000
+    }, {
+      command: 'wait-for',
+      selector: 'button[class="button email-confirmation__button is-primary"]'
+    }, {
+      command: 'save-account',
+      sitename: false
+    }, {
+      command: 'wait',
+      value: 60000
     }
   ];
 

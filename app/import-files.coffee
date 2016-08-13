@@ -171,7 +171,6 @@ exports.profiles = (filePath) ->
         tempProfiles[a] = {
           username: ''
           password: ''
-          sitename: ''
           email: ''
           profile: ''
           links: ''

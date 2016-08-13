@@ -194,7 +194,6 @@
           tempProfiles[a] = {
             username: '',
             password: '',
-            sitename: '',
             email: '',
             profile: '',
             links: '',

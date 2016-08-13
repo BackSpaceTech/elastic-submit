@@ -21,7 +21,7 @@ exports.steps = [
   }
   {
     command: 'wait'
-    value: 2000
+    value: 5000
   }
   {
     command: 'wait-for'
@@ -32,16 +32,8 @@ exports.steps = [
     selector: 'svg.gridicon.gridicons-create'
   }
   {
-    command: 'wait'
-    value: 1000
-  }
-  {
     command: 'wait-for'
     selector: '#tinymce-1'
-  }
-  {
-    command: 'wait'
-    value: 1000
   }
   {
     command: 'title'
@@ -50,10 +42,6 @@ exports.steps = [
   {
     command: 'click'
     selector: 'a[title="Edit the raw HTML code"]'
-  }
-  {
-    command: 'wait'
-    value: 1000
   }
   {
     command: 'body'
