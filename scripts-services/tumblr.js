@@ -24,6 +24,8 @@
       command: 'wait',
       value: 1000
     }, {
+      command: 'press-tab'
+    }, {
       command: 'service-password',
       selector: '#signup_password'
     }, {
@@ -62,7 +64,7 @@
       selector: 'input#sourceUrl_input'
     }, {
       command: 'wait',
-      value: 1000
+      value: 5000
     }, {
       command: 'wait-for',
       selector: 'div[class="ace_layer ace_text-layer"]'

@@ -40,7 +40,7 @@ spinnerLoop = (x) ->
     ++y
   tempArray
 
-exports.getArticle = (articles, microBlog, noHTML) ->
+exports.getArticle = (articles, microBlog, noHTML, noLinks) ->
   # Create spun article
   a = Math.floor(articles.length*Math.random())
   newArticle =
@@ -78,11 +78,13 @@ exports.getArticle = (articles, microBlog, noHTML) ->
   newArticle.body = spinner(temp)
   if noHTML
     newArticle.body = newArticle.body.replace('<br>', '\n')
-
+  if noLinks
+    # Remove link tags
+    newArticle.body = newArticle.body.replace('#links#', ' ')
   # Insert random links
-  consolex.log 'blue', 'Inserting random links in article # ' + a + '...'
   if !noHTML
     # Insert random links with random keywords in body
+    consolex.log 'blue', 'Inserting random links in article # ' + a + '...'
     tempIndex = 0
     while tempIndex < newArticle.keywords.length # Check for empty string
       if newArticle.keywords[tempIndex].trim().length == 0
@@ -90,7 +92,7 @@ exports.getArticle = (articles, microBlog, noHTML) ->
       ++tempIndex
     if newArticle.keywords.length == 0 # If no keywords
       newArticle.keywords[0] = 'here'
-    if (newArticle.body.indexOf("#links#")) == -1 # No link tags
+    if !noLinks and (newArticle.body.indexOf("#links#") == -1) # No link tags
       newArticle.body += ' #links#'
     while (newArticle.body.indexOf("#links#")) != -1
       tempRandom = Math.floor(Math.random()*newArticle.links.length)
@@ -100,7 +102,7 @@ exports.getArticle = (articles, microBlog, noHTML) ->
       tempLink = ' <a href="' + randomLink.toString().trim() + '">' +
         randomKeyword.toString().trim() + '</a> '
       newArticle.body = newArticle.body.replace('#links#', tempLink)
-  else
+  else if !noLinks
     # Remove link tags
     newArticle.body = newArticle.body.replace('#links#', ' ')
     # Insert random link at end of body

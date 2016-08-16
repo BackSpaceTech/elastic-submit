@@ -26,6 +26,9 @@ exports.steps = [
     value: 1000
   }
   {
+    command: 'press-tab'
+  }
+  {
     command: 'service-password'
     selector: '#signup_password'
   }
@@ -76,7 +79,7 @@ exports.steps = [
   }
   {
     command: 'wait'
-    value: 1000
+    value: 5000
   }
   {
     command: 'wait-for'

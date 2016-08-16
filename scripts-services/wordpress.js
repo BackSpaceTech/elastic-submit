@@ -9,7 +9,8 @@
     {
       command: 'create-article',
       micro: false,
-      noHTML: false
+      noHTML: false,
+      noLinks: false
     }, {
       command: 'wait-for',
       selector: '#user_login'
@@ -51,7 +52,7 @@
       selector: 'a.notice__action'
     }, {
       command: 'wait',
-      value: 5000
+      value: 300000
     }
   ];
 

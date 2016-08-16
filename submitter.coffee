@@ -1,5 +1,5 @@
 # coffeelint: disable=max_line_length
-scriptDebug = true # When true takes screenshots
+scriptDebug = false # When true takes screenshots
 
 system = require('system')
 fs = require('fs')
@@ -12,7 +12,8 @@ spinner = require('./app/spinner')
 jQueryLoc = './js/jquery-2.2.4.min.js'
 
 phantom.clearCookies()
-waitTimeout = 30000 # Seconds
+waitTimeout = 60000 # Seconds
+userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/51.0.2704.79 Chrome/51.0.2704.79 Safari/537.36'
 
 submitMode = system.args[1]
 
@@ -34,6 +35,8 @@ if submitMode == 'seo'
     title: ''
     body: ''
     keywords: ''
+    links: ''
+    images: ''
   randomAccount =
     username: ''
     password: ''
@@ -59,7 +62,7 @@ if submitMode == 'seo'
   while i < services.length
     if services[i].status.toLowerCase() == 'ok'
       service[currentService] = require('./scripts-services/' + services[i].name)
-    ++currentService
+      ++currentService
     ++i
 
   # Load indexers
@@ -99,7 +102,7 @@ else if submitMode == 'seo-accounts'
   while i < services.length
     if services[i].status.toLowerCase() == 'ok'
       service[currentService] = require('./scripts-accounts/' + services[i].name)
-    ++currentService
+      ++currentService
     ++i
   # Import Files
   consolex.log 'cyan', 'Importing files...'
@@ -120,7 +123,7 @@ pageStatus = 'success'
 #---------------------- Service Loop ------------------------------------------
 doService = (service, doneCallback) ->
   serviceName = service.name
-  ifSkip = false
+  skipIf = false
   # Steps Loop
   consolex.log 'yellow', '\n-------------- Submit to ' + serviceName +
     ' ----------------'
@@ -158,8 +161,7 @@ doService = (service, doneCallback) ->
     consolex.log 'red', 'Step error - ' + step.command +
       '. Skipping ' + serviceName + '...'
     page.render './capture/error.png'
-  page.settings.userAgent = 'Mozilla/5.0 (Windows NT 10.0; WOW64) ' +
-    'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36'
+  page.settings.userAgent = userAgent
   page.clearMemoryCache()
   page.open service.url, (status) ->
     if status == 'success'
@@ -231,17 +233,17 @@ doService = (service, doneCallback) ->
 
         ++currentStep
         if goodService
-          if !ifSkip
+          if !skipIf
             consolex.log 'blue', 'Step ' + currentStep + ' - ' + step.command
           #---------------------- Create Article -----------------------------
-          if step.command == 'create-article' and !ifSkip
+          if step.command == 'create-article' and !skipIf
             consolex.log 'cyan', 'Creating article...'
             submitArticle = spinner.getArticle(articles, step.micro,
-              step.noHTML)
+              step.noHTML, step.noLinks)
             randomAccount = spinner.getAccount(accounts, serviceName)
             doneCallback(null)
           #---------------------- if -----------------------------------------
-          else if step.command == 'if' and !ifSkip
+          else if step.command == 'if' and !skipIf
             if page.injectJs jQueryLoc
               x = page.evaluate(((s) ->
                 y = $(s)
@@ -252,26 +254,26 @@ doService = (service, doneCallback) ->
               ), step.selector)
               if x > 0
                 consolex.log 'cyan', 'Found selector'
-                ifSkip = false
+                skipIf = false
                 saveScreen()
                 doneCallback(null)
               else
                 consolex.log 'blue', 'Selector '+ step.selector + ' not found'
-                ifSkip = true
+                skipIf = true
                 saveScreen()
                 doneCallback(null)
           #---------------------- if -----------------------------------------
           else if step.command == 'end-if'
-            ifSkip = false
+            skipIf = false
             saveScreen()
             doneCallback(null)
           #---------------------- Create Profile -----------------------------
-          else if step.command == 'create-profile' and !ifSkip
+          else if step.command == 'create-profile' and !skipIf
             consolex.log 'cyan', 'Creating profile...'
             submitProfile = spinner.getProfile(profiles, step.noHTML)
             doneCallback(null)
           #---------------------- Wait-for ----------------------------------
-          else if step.command == 'wait-for' and !ifSkip
+          else if step.command == 'wait-for' and !skipIf
             saveScreen()
             consolex.log 'blue', 'Waiting for ' + step.selector + '...'
             jQueryStatus = 0
@@ -311,7 +313,7 @@ doService = (service, doneCallback) ->
                 stepError step
                 doneCallback(null)
           #---------------------- Wait ---------------------------------------
-          else if step.command == 'wait' and !ifSkip
+          else if step.command == 'wait' and !skipIf
             tempTime = step.value
             consolex.log 'blue', 'Waiting for ' + tempTime + ' ms...'
             count = 0
@@ -329,7 +331,7 @@ doService = (service, doneCallback) ->
               saveScreen()
               doneCallback(null)
           # -------------------------- Login --------------------------------
-          else if (step.command == 'login' or step.command == 'login-indexer') and !ifSkip
+          else if (step.command == 'login' or step.command == 'login-indexer') and !skipIf
             saveScreen()
             if step.command == 'login'
               if randomAccount.username == 'no accounts'
@@ -349,36 +351,77 @@ doService = (service, doneCallback) ->
               submitForm(step.form)
             saveScreen()
             doneCallback(null)
+          # -------------------------- Select Option ----------------------------
+          else if step.command == 'select-option' and !skipIf
+            if page.injectJs jQueryLoc
+              page.evaluate ((selector, optionValue) ->
+                sel = $(selector)
+                if sel
+                  sel.change(->
+                    sel.val(optionValue)
+                    return
+                  ).change()
+                  # dispatch change event to be sure
+                  evt = document.createEvent('UIEvents')
+                  evt.initUIEvent 'change', true, true
+                  sel[0].dispatchEvent evt
+                  return
+              ), step.selector, step.value
+              saveScreen()
+              doneCallback(null)
+          # -------------------------- Random Link ----------------------------
+          else if step.command == 'random-link' and !skipIf
+            x = Math.floor(Math.random() * submitArticle.links.length)
+            typeField(step.selector, submitArticle.links[x], true)
+            saveScreen()
+            doneCallback(null)
+          # -------------------------- Random Number ----------------------------
+          else if step.command == 'random-number' and !skipIf
+            x = Math.floor(Math.random() * (step.max - step.min)) + step.min
+            typeField(step.selector, x.toString(), true)
+            saveScreen()
+            doneCallback(null)
+          # -------------------------- Press Enter ----------------------------
+          else if step.command == 'press-enter' and !skipIf
+            page.sendEvent('keypress', page.event.key.Enter)
+            saveScreen()
+            doneCallback(null)
+          # -------------------------- Press Tab ----------------------------
+          else if step.command == 'press-tab' and !skipIf
+            page.sendEvent('keypress', page.event.key.Tab)
+            saveScreen()
+            doneCallback(null)
           # -------------------------- Service Email --------------------------
-          else if step.command == 'service-username' and !ifSkip
+          else if step.command == 'service-username' and !skipIf
             x = randomAccount.username
+            consolex.log 'blue', 'Username: ' + x
             typeField(step.selector, x, true)
             saveScreen()
             doneCallback(null)
           # -------------------------- Service Password -----------------------
-          else if step.command == 'service-password' and !ifSkip
+          else if step.command == 'service-password' and !skipIf
             x = randomAccount.password
             typeField(step.selector, x, true)
             saveScreen()
             doneCallback(null)
           # -------------------------- Email --------------------------------
-          else if step.command == 'profile-email' and !ifSkip
+          else if step.command == 'profile-email' and !skipIf
             x = submitProfile.username + '@' + submitProfile.email
             typeField(step.selector, x, true)
             saveScreen()
             doneCallback(null)
           # -------------------------- Username -------------------------------
-          else if step.command == 'profile-username' and !ifSkip
+          else if step.command == 'profile-username' and !skipIf
             typeField(step.selector, submitProfile.username, true)
             saveScreen()
             doneCallback(null)
           # -------------------------- Password --------------------------------
-          else if step.command == 'profile-password' and !ifSkip
+          else if step.command == 'profile-password' and !skipIf
             typeField(step.selector, submitProfile.password, true)
             saveScreen()
             doneCallback(null)
           # -------------------------- Login --------------------------------
-          else if step.command == 'click' and !ifSkip
+          else if step.command == 'click' and !skipIf
             saveScreen()
             if page.injectJs jQueryLoc
               x = page.evaluate ((s) ->
@@ -403,7 +446,7 @@ doService = (service, doneCallback) ->
             saveScreen()
             doneCallback(null)
           # -------------------------- Title / Body ---------------------------
-          else if (step.command == 'title' or step.command == 'body') and !ifSkip
+          else if (step.command == 'title' or step.command == 'body') and !skipIf
             saveScreen()
             if step.command == 'title'
               temp = submitArticle.title
@@ -413,7 +456,7 @@ doService = (service, doneCallback) ->
             saveScreen()
             doneCallback(null)
           # -------------------------- Save-href --------------------------------
-          else if step.command == 'save-href' and !ifSkip
+          else if step.command == 'save-href' and !skipIf
             saveScreen()
             if page.injectJs jQueryLoc
               x = page.evaluate ((s) ->
@@ -442,7 +485,7 @@ doService = (service, doneCallback) ->
             saveScreen()
             doneCallback(null)
           # -------------------------- Save-accounts ---------------------------
-          else if step.command == 'save-account' and !ifSkip
+          else if step.command == 'save-account' and !skipIf
             # Save accounts.csv
             x = serviceName + ','
             x += submitProfile.username + ','
@@ -462,13 +505,13 @@ doService = (service, doneCallback) ->
             saveScreen()
             doneCallback(null)
           # -------------------------- Save-href -------------------------------
-          else if step.command == 'backlinks' and !ifSkip
+          else if step.command == 'backlinks' and !skipIf
             saveScreen()
             typeField(step.selector, backlinksList)
             saveScreen()
             doneCallback(null)
           #---------------------- Step Error ----------------------------------
-          else if !ifSkip
+          else if !skipIf
             consolex.log 'red', 'Unrecognized command: ' + step.command
             stepError step
             doneCallback(null)

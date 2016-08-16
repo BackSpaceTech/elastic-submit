@@ -7,6 +7,7 @@ exports.steps = [
     command: 'create-article'
     micro: false
     noHTML: false
+    noLinks: false
   }
   {
     command: 'wait-for'
@@ -61,6 +62,6 @@ exports.steps = [
   }
   {
     command: 'wait'
-    value: 5000
+    value: 300000
   }
 ]

@@ -51,7 +51,7 @@
     return tempArray;
   };
 
-  exports.getArticle = function(articles, microBlog, noHTML) {
+  exports.getArticle = function(articles, microBlog, noHTML, noLinks) {
     var a, floatPos, newArticle, randomFloat, randomImage, randomKeyword, randomLink, randomPos, temp, temp1, temp2, temp3, tempIndex, tempLink, tempRandom;
     a = Math.floor(articles.length * Math.random());
     newArticle = {
@@ -82,8 +82,11 @@
     if (noHTML) {
       newArticle.body = newArticle.body.replace('<br>', '\n');
     }
-    consolex.log('blue', 'Inserting random links in article # ' + a + '...');
+    if (noLinks) {
+      newArticle.body = newArticle.body.replace('#links#', ' ');
+    }
     if (!noHTML) {
+      consolex.log('blue', 'Inserting random links in article # ' + a + '...');
       tempIndex = 0;
       while (tempIndex < newArticle.keywords.length) {
         if (newArticle.keywords[tempIndex].trim().length === 0) {
@@ -94,7 +97,7 @@
       if (newArticle.keywords.length === 0) {
         newArticle.keywords[0] = 'here';
       }
-      if ((newArticle.body.indexOf("#links#")) === -1) {
+      if (!noLinks && (newArticle.body.indexOf("#links#") === -1)) {
         newArticle.body += ' #links#';
       }
       while ((newArticle.body.indexOf("#links#")) !== -1) {
@@ -105,7 +108,7 @@
         tempLink = ' <a href="' + randomLink.toString().trim() + '">' + randomKeyword.toString().trim() + '</a> ';
         newArticle.body = newArticle.body.replace('#links#', tempLink);
       }
-    } else {
+    } else if (!noLinks) {
       newArticle.body = newArticle.body.replace('#links#', ' ');
       temp = Math.floor(Math.random() * newArticle.links.length);
       randomLink = newArticle.links[temp];
