@@ -156,10 +156,17 @@ doService = (service, doneCallback) ->
       when step.text then ':contains("' + step.text + '")'
       else null
     return tempSelect
+  resetClip = () -> # Reset to full screen
+    page.clipRect =
+      left: 0
+      top: 0
+      width: 0
+      height: 0
   stepError = (step) ->
     goodService = false
     consolex.log 'red', 'Step error - ' + step.command +
       '. Skipping ' + serviceName + '...'
+    resetClip()
     page.render './capture/error.png'
   page.settings.userAgent = userAgent
   page.clearMemoryCache()
@@ -173,6 +180,7 @@ doService = (service, doneCallback) ->
       doStep = (step, doneCallback) ->
         saveScreen = () ->
           if scriptDebug
+            resetClip()
             page.render './capture/capture' + currentStep + '.png'
         #------------------------ Input text ----------------------------------
         typeField = (selector, inputText, overwrite) ->
@@ -285,7 +293,7 @@ doService = (service, doneCallback) ->
               count < waitTimeout
             ), ((callback) ->
               count += tempDelay
-              if pageStatus == 'success' and (jQueryStatus == 0)
+              if jQueryStatus == 0
                 jQueryStatus = 1
                 if page.injectJs jQueryLoc
                   jQueryStatus = 2
@@ -418,6 +426,32 @@ doService = (service, doneCallback) ->
           # -------------------------- Password --------------------------------
           else if step.command == 'profile-password' and !skipIf
             typeField(step.selector, submitProfile.password, true)
+            saveScreen()
+            doneCallback(null)
+          # -------------------------- Captcha --------------------------------
+          else if step.command == 'captcha' and !skipIf
+            if page.injectJs jQueryLoc
+              captchaImage = page.evaluate ((s) ->
+                if ($(s).length)
+                  return {
+                    top : $(s).offset().top,
+                    left : $(s).offset().left,
+                    width : $(s).width(),
+                    height : $(s).height()
+                  }
+                else
+                  return false
+              ), step.image
+              if !captchaImage
+                consolex.log 'red', 'Could not find captcha image'
+                stepError step
+              else
+                console.log 'captcha: ' + JSON.stringify captchaImage
+                page.clipRect = captchaImage
+                page.render './capture/captcha.png'
+
+            else
+              consolex.log 'red', 'Could not inject jQuery'
             saveScreen()
             doneCallback(null)
           # -------------------------- Login --------------------------------
