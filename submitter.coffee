@@ -1,5 +1,5 @@
 # coffeelint: disable=max_line_length
-scriptDebug = false # When true takes screenshots
+scriptDebug = true # When true takes screenshots
 
 system = require('system')
 fs = require('fs')
@@ -293,7 +293,7 @@ doService = (service, doneCallback) ->
               count < waitTimeout
             ), ((callback) ->
               count += tempDelay
-              if jQueryStatus == 0
+              if (pageStatus == 'success') and (jQueryStatus == 0)
                 jQueryStatus = 1
                 if page.injectJs jQueryLoc
                   jQueryStatus = 2
