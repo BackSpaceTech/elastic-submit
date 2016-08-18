@@ -2,7 +2,7 @@
 (function() {
   var accounts, articles, async, backlinksList, consolex, currentIndexer, currentLoop, currentService, currentStep, doService, fileAccounts, fileArticles, fileBacklinks, fileProfiles, fs, goodService, i, importFiles, indexerDetails, indexers, jQueryLoc, numAccounts, numIndexerLoops, numPosts, pageStatus, profiles, randomAccount, scriptDebug, service, serviceName, services, spinner, submitArticle, submitMode, submitProfile, system, userAgent, waitTimeout, webPage, xpath2css;
 
-  scriptDebug = false;
+  scriptDebug = true;
 
   system = require('system');
 
@@ -26,7 +26,7 @@
 
   waitTimeout = 60000;
 
-  userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/51.0.2704.79 Chrome/51.0.2704.79 Safari/537.36';
+  userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36';
 
   submitMode = system.args[1];
 
@@ -133,7 +133,7 @@
   pageStatus = 'success';
 
   doService = function(service, doneCallback) {
-    var getSelector, page, skipIf, stepError;
+    var getSelector, page, resetClip, skipIf, stepError;
     serviceName = service.name;
     skipIf = false;
     consolex.log('yellow', '\n-------------- Submit to ' + serviceName + ' ----------------');
@@ -146,7 +146,7 @@
     };
     if (scriptDebug) {
       page.onConsoleMessage = function(msg) {
-        console.log(msg);
+        consolex.log('blue', 'Webpage message: ' + msg);
       };
     }
     page.onError = function(msg, trace) {
@@ -178,9 +178,18 @@
       })();
       return tempSelect;
     };
+    resetClip = function() {
+      return page.clipRect = {
+        left: 0,
+        top: 0,
+        width: 0,
+        height: 0
+      };
+    };
     stepError = function(step) {
       goodService = false;
       consolex.log('red', 'Step error - ' + step.command + '. Skipping ' + serviceName + '...');
+      resetClip();
       return page.render('./capture/error.png');
     };
     page.settings.userAgent = userAgent;
@@ -189,13 +198,17 @@
       var doStep;
       if (status === 'success') {
         consolex.log('blue', 'Opened url.');
+        page.onLoadStarted = function() {
+          pageStatus = 'loading';
+        };
         page.onLoadFinished = function(status) {
           pageStatus = status;
         };
         doStep = function(step, doneCallback) {
-          var count, jQueryLoadTime, jQueryStatus, resetForm, saveScreen, submitForm, temp, tempDelay, tempPassword, tempTime, tempUser, typeField, x;
+          var captchaImage, count, jQueryLoadTime, jQueryStatus, resetForm, saveScreen, submitForm, temp, tempDelay, tempPassword, tempTime, tempUser, typeField, x, y;
           saveScreen = function() {
             if (scriptDebug) {
+              resetClip();
               return page.render('./capture/capture' + currentStep + '.png');
             }
           };
@@ -280,6 +293,13 @@
               submitArticle = spinner.getArticle(articles, step.micro, step.noHTML, step.noLinks);
               randomAccount = spinner.getAccount(accounts, serviceName);
               return doneCallback(null);
+            } else if (step.command === 'viewport-size' && !skipIf) {
+              page.viewportSize = {
+                width: step.width,
+                height: step.height
+              };
+              saveScreen();
+              return doneCallback(null);
             } else if (step.command === 'if' && !skipIf) {
               if (page.injectJs(jQueryLoc)) {
                 x = page.evaluate((function(s) {
@@ -323,7 +343,7 @@
                 return count < waitTimeout;
               }), (function(callback) {
                 count += tempDelay;
-                if (pageStatus === 'success' && (jQueryStatus === 0)) {
+                if ((pageStatus === 'success') && (jQueryStatus === 0)) {
                   jQueryStatus = 1;
                   if (page.injectJs(jQueryLoc)) {
                     jQueryStatus = 2;
@@ -454,6 +474,33 @@
               typeField(step.selector, submitProfile.password, true);
               saveScreen();
               return doneCallback(null);
+            } else if (step.command === 'captcha' && !skipIf) {
+              if (page.injectJs(jQueryLoc)) {
+                captchaImage = page.evaluate((function(s) {
+                  if (($(s).length)) {
+                    return {
+                      top: $(s).offset().top,
+                      left: $(s).offset().left,
+                      width: $(s).width(),
+                      height: $(s).height()
+                    };
+                  } else {
+                    return false;
+                  }
+                }), step.image);
+                if (!captchaImage) {
+                  consolex.log('red', 'Could not find captcha image');
+                  stepError(step);
+                } else {
+                  console.log('captcha: ' + JSON.stringify(captchaImage));
+                  page.clipRect = captchaImage;
+                  page.render('./capture/captcha.png');
+                }
+              } else {
+                consolex.log('red', 'Could not inject jQuery');
+              }
+              saveScreen();
+              return doneCallback(null);
             } else if (step.command === 'click' && !skipIf) {
               saveScreen();
               if (page.injectJs(jQueryLoc)) {
@@ -500,7 +547,14 @@
                   }
                 }), step.selector);
                 if (x) {
-                  backlinksList += x + '\n';
+                  if (step.domain) {
+                    y = page.url.split('/');
+                    x = y[0] + '//' + y[2] + x;
+                    console.log('Saving: ' + x);
+                    backlinksList += x + '\n';
+                  } else {
+                    backlinksList += x + '\n';
+                  }
                   try {
                     fs.write(fileBacklinks, x, 'a');
                     fs.write(fileBacklinks, '\n', 'a');
@@ -581,7 +635,7 @@
     }), (function(next) {
       return async.eachSeries(service, doService, function(err) {
         currentLoop++;
-        consolex.log('green', 'Finished services for loop');
+        consolex.log('green', 'Finished services for loop ' + currentLoop);
         return next();
       });
     }), function(err) {
@@ -601,7 +655,7 @@
     }), (function(next) {
       return async.eachSeries(service, doService, function(err) {
         currentLoop++;
-        consolex.log('green', 'Finished services for loop');
+        consolex.log('green', 'Finished services for loop ' + currentLoop);
         return next();
       });
     }), function(err) {

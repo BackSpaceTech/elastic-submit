@@ -13,7 +13,7 @@ jQueryLoc = './js/jquery-2.2.4.min.js'
 
 phantom.clearCookies()
 waitTimeout = 60000 # Seconds
-userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/51.0.2704.79 Chrome/51.0.2704.79 Safari/537.36'
+userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36'
 
 submitMode = system.args[1]
 
@@ -135,7 +135,7 @@ doService = (service, doneCallback) ->
     height: 600
   if scriptDebug
     page.onConsoleMessage = (msg) ->
-      console.log msg
+      consolex.log 'blue', 'Webpage message: ' + msg
       return
   page.onError = (msg, trace) ->
     if (msg.slice(0,9) != 'TypeError') and (msg.slice(0,17) != 'Unhandled promise') # Ignore
@@ -173,6 +173,9 @@ doService = (service, doneCallback) ->
   page.open service.url, (status) ->
     if status == 'success'
       consolex.log 'blue','Opened url.'
+      page.onLoadStarted = ->
+        pageStatus = 'loading'
+        return
       page.onLoadFinished = (status) ->
         pageStatus = status
         return
@@ -249,6 +252,13 @@ doService = (service, doneCallback) ->
             submitArticle = spinner.getArticle(articles, step.micro,
               step.noHTML, step.noLinks)
             randomAccount = spinner.getAccount(accounts, serviceName)
+            doneCallback(null)
+          #---------------------- Viewport Size -----------------------------
+          else if step.command == 'viewport-size' and !skipIf
+            page.viewportSize =
+              width: step.width
+              height: step.height
+            saveScreen()
             doneCallback(null)
           #---------------------- if -----------------------------------------
           else if step.command == 'if' and !skipIf
@@ -500,7 +510,13 @@ doService = (service, doneCallback) ->
                   return false
               ), step.selector
               if x
-                backlinksList += x + '\n'
+                if step.domain
+                  y = page.url.split('/')
+                  x = y[0] + '//' + y[2] + x
+                  console.log  'Saving: ' + x
+                  backlinksList += x + '\n'
+                else
+                  backlinksList += x + '\n'
                 # Save backlinks.txt
                 try
                   fs.write fileBacklinks, x, 'a'
@@ -576,7 +592,7 @@ if submitMode == 'seo'
     # Services Loop
     async.eachSeries service, doService, (err) ->
       currentLoop++
-      consolex.log 'green', 'Finished services for loop'
+      consolex.log 'green', 'Finished services for loop ' + currentLoop
       next()
     ), (err) ->
     consolex.log 'green', 'Finished all submissions'
@@ -597,7 +613,7 @@ else if submitMode == 'seo-accounts'
     # Services Loop
     async.eachSeries service, doService, (err) ->
       currentLoop++
-      consolex.log 'green', 'Finished services for loop'
+      consolex.log 'green', 'Finished services for loop ' + currentLoop
       next()
     ), (err) ->
     consolex.log 'green', 'Finished all account creation tasks'
