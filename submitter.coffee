@@ -35,7 +35,7 @@ if submitMode == 'seo'
   fileBacklinks = './backlinks/backlinks.txt'
   tempInput = getInput 'Backlinks file name (backlinks):'
   if tempInput.trim().length != 0
-    fileBacklinks = = './backlinks/' + tempInput + '.txt'
+    fileBacklinks == './backlinks/' + tempInput + '.txt'
   console.log '\n'
   consolex.log 'cyan', '---------------- Submission Details --------------------'
   consolex.log 'cyan', 'Submit mode: ' + submitMode
