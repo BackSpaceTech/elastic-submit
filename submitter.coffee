@@ -1,5 +1,6 @@
 # coffeelint: disable=max_line_length
-scriptDebug = true # When true takes screenshots
+# run on Linux command line to reduce PhantomJS crashes: ulimit -c unlimited
+scriptDebug = false # When true takes screenshots
 
 system = require('system')
 fs = require('fs')
@@ -17,11 +18,24 @@ userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gec
 
 submitMode = system.args[1]
 
+getInput = (msg) ->
+  consolex.log 'magenta', msg
+  line = system.stdin.readLine()
+
 if submitMode == 'seo'
-  fileAccounts = './accounts/' + system.args[2] + '.csv'
-  fileArticles = './articles/' + system.args[3] + '.txt'
-  fileBacklinks = './backlinks/' + system.args[4] + '.txt'
-  numPosts = system.args[5]
+  numPosts = system.args[2]
+  fileAccounts = './accounts/accounts.csv'
+  tempInput = getInput 'Accounts file (accounts):'
+  if tempInput.trim().length != 0
+    fileAccounts = './accounts/' + tempInput + '.csv'
+  fileArticles = './articles/articles.txt'
+  tempInput = getInput 'Articles file (articles):'
+  if tempInput.trim().length != 0
+    fileArticles = './articles/' + tempInput + '.txt'
+  fileBacklinks = './backlinks/backlinks.txt'
+  tempInput = getInput 'Backlinks file name (backlinks):'
+  if tempInput.trim().length != 0
+    fileBacklinks = = './backlinks/' + tempInput + '.txt'
   console.log '\n'
   consolex.log 'cyan', '---------------- Submission Details --------------------'
   consolex.log 'cyan', 'Submit mode: ' + submitMode
@@ -84,9 +98,15 @@ if submitMode == 'seo'
   articles = importFiles.articles(fileArticles)
 
 else if submitMode == 'seo-accounts'
-  fileAccounts = './accounts/' + system.args[2] + '.csv'
-  fileProfiles =  './profiles/' + system.args[3] + '.txt'
-  numAccounts = system.args[4]
+  numAccounts = system.args[2]
+  fileAccounts = './accounts/accounts.csv'
+  tempInput = getInput 'Accounts file (accounts):'
+  if tempInput.trim().length != 0
+    fileAccounts = './accounts/' + tempInput + '.csv'
+  fileProfiles = './profiles/profiles.txt'
+  tempInput = getInput 'Profiles file (profiles):'
+  if tempInput.trim().length != 0
+    fileProfiles = './profiles/' + tempInput + '.txt'
   console.log '\n'
   consolex.log 'cyan', '---------------- Submission Details --------------------'
   consolex.log 'cyan', 'Submit mode: ' + submitMode
@@ -127,7 +147,6 @@ doService = (service, doneCallback) ->
   # Steps Loop
   consolex.log 'yellow', '\n-------------- Submit to ' + serviceName +
     ' ----------------'
-  consolex.log 'blue','Opening url '+service.url+'...'
   page = webPage.create()
   page.clearCookies()
   page.viewportSize =
@@ -168,8 +187,14 @@ doService = (service, doneCallback) ->
       '. Skipping ' + serviceName + '...'
     resetClip()
     page.render './capture/error.png'
-  page.settings.userAgent = userAgent
+  # Set up PhantomJS before opening page
+  if service.userAgent
+    page.settings.userAgent = service.userAgent
+    consolex.log  'cyan', 'Changing user-agent to ' + service.userAgent
+  else
+    page.settings.userAgent = userAgent
   page.clearMemoryCache()
+  consolex.log 'blue','Opening url '+service.url+'...'
   page.open service.url, (status) ->
     if status == 'success'
       consolex.log 'blue','Opened url.'
@@ -241,7 +266,7 @@ doService = (service, doneCallback) ->
             consolex.log 'red', 'Could not inject jQuery'
             stepError step
             doneCallback(null)
-
+        #---------------------- Steps -----------------------------
         ++currentStep
         if goodService
           if !skipIf
@@ -369,7 +394,7 @@ doService = (service, doneCallback) ->
               submitForm(step.form)
             saveScreen()
             doneCallback(null)
-          # -------------------------- Select Option ----------------------------
+          # -------------------------- Select Option --------------------------
           else if step.command == 'select-option' and !skipIf
             if page.injectJs jQueryLoc
               page.evaluate ((selector, optionValue) ->
@@ -438,6 +463,21 @@ doService = (service, doneCallback) ->
             typeField(step.selector, submitProfile.password, true)
             saveScreen()
             doneCallback(null)
+          # -------------------------- Register ------------------------------
+          else if step.command == 'register' and !skipIf
+            saveScreen()
+            x = submitProfile.username + '@' + submitProfile.email
+            typeField(step.email, x)
+            typeField(step.username, submitProfile.username)
+            typeField(step.password, submitProfile.password)
+            if step.verifyEmail
+              typeField(step.verifyEmail, x)
+            if step.verifyPassword
+              typeField(step.verifyPassword, submitProfile.password)
+            if step.submit
+              submitForm(step.form)
+            saveScreen()
+            doneCallback(null)
           # -------------------------- Captcha --------------------------------
           else if step.command == 'captcha' and !skipIf
             if page.injectJs jQueryLoc
@@ -458,8 +498,9 @@ doService = (service, doneCallback) ->
               else
                 console.log 'captcha: ' + JSON.stringify captchaImage
                 page.clipRect = captchaImage
-                page.render './capture/captcha.png'
-
+                page.render './captcha.png'
+                tempInput = getInput 'Captcha answer:'
+                typeField(step.selector, tempInput)
             else
               consolex.log 'red', 'Could not inject jQuery'
             saveScreen()
@@ -510,10 +551,10 @@ doService = (service, doneCallback) ->
                   return false
               ), step.selector
               if x
+                consolex.log  'magenta', x
                 if step.domain
                   y = page.url.split('/')
                   x = y[0] + '//' + y[2] + x
-                  console.log  'Saving: ' + x
                   backlinksList += x + '\n'
                 else
                   backlinksList += x + '\n'
