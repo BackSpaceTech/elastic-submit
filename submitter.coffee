@@ -525,13 +525,9 @@ doService = (service, doneCallback) ->
                 consolex.log 'red', 'Could not find element'
                 stepError step
               else
-                console.log 'element location: ' + JSON.stringify elemLoc
                 posX = Math.floor(elemLoc.left + elemLoc.width/2)
                 posY = Math.floor(elemLoc.top + elemLoc.height/2)
-                console.log 'posX: ' + posX
-                console.log 'posY: ' + posY
                 page.sendEvent('click', posX, posY, 'left')
-                console.log 'clicked element'
             else
               consolex.log 'red', 'Could not inject jQuery'
             saveScreen()
