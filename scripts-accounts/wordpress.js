@@ -11,7 +11,7 @@
       noHTML: false
     }, {
       command: 'wait',
-      value: 2000
+      value: 10000
     }, {
       command: 'wait-for',
       selector: 'span[class="signup__steps"]'

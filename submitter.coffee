@@ -1,6 +1,6 @@
 # coffeelint: disable=max_line_length
 # run on Linux command line to reduce PhantomJS crashes: ulimit -c unlimited
-scriptDebug = false # When true takes screenshots
+scriptDebug = true # When true takes screenshots
 
 system = require('system')
 fs = require('fs')
@@ -505,29 +505,35 @@ doService = (service, doneCallback) ->
               consolex.log 'red', 'Could not inject jQuery'
             saveScreen()
             doneCallback(null)
-          # -------------------------- Login --------------------------------
+          # -------------------------- Click --------------------------------
           else if step.command == 'click' and !skipIf
-            saveScreen()
             if page.injectJs jQueryLoc
-              x = page.evaluate ((s) ->
-                # find element to send click to
+              elemLoc = page.evaluate ((s) ->
                 if ($(s).length)
-                  element = $(s)[0]
-                  # create a mouse click event
-                  event = document.createEvent('MouseEvents')
-                  event.initMouseEvent 'click', true, true, window, 1, 0, 0
-                  # send click to element
-                  element.dispatchEvent event
-                  return true
+                  x = Math.floor($(s).offset().left + ($(s).width()/2))
+                  y = Math.floor($(s).offset().top + ($(s).height()/2))
+                  return {
+                    top : $(s).offset().top,
+                    left : $(s).offset().left,
+                    width : $(s).width(),
+                    height : $(s).height()
+                  }
                 else
                   return false
               ), step.selector
-              if !x
-                consolex.log 'red', 'Could not find selector ' + step.selector
+              if !elemLoc
+                consolex.log 'red', 'Could not find element'
                 stepError step
+              else
+                console.log 'element location: ' + JSON.stringify elemLoc
+                posX = Math.floor(elemLoc.left + elemLoc.width/2)
+                posY = Math.floor(elemLoc.top + elemLoc.height/2)
+                console.log 'posX: ' + posX
+                console.log 'posY: ' + posY
+                page.sendEvent('click', posX, posY, 'left')
+                console.log 'clicked element'
             else
               consolex.log 'red', 'Could not inject jQuery'
-              stepError step
             saveScreen()
             doneCallback(null)
           # -------------------------- Title / Body ---------------------------

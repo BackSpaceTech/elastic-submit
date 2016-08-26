@@ -9,7 +9,7 @@ exports.steps = [
   }
   {
     command: 'wait'
-    value: 2000
+    value: 10000
   }
   {
     command: 'wait-for'
